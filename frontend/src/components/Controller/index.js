@@ -4,7 +4,7 @@ import "./index.css";
 
 export default function Controller() {
 //   const socket = io("http://localhost:8000");
-const socket = io("http://rodel.onrender.com");
+const socket = io("https://rodel.onrender.com");
   const [gamepad, setGamepad] = useState(null);
   const [status, setStatus] = useState(null);
 
