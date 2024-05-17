@@ -16,18 +16,18 @@ const isProduction = environment === 'production';
 
 const app = express();
 const server = http.createServer(app);
-// const io = require("socket.io")(server, {
-//   cors: {
-//     origin: 'http://localhost:3000',
-//     methods: ["GET", "POST"]
-//   }
-// });
-const io = require("socket.io")(server, {
+let io = isProduction ? require("socket.io")(server, {
   cors: {
     origin: 'https://rodel.onrender.com',
     methods: ["GET", "POST"]
   }
+}) : require("socket.io")(server, {
+  cors: {
+    origin: 'http://localhost:3000',
+    methods: ["GET", "POST"]
+  }
 });
+
 
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);

@@ -4,7 +4,7 @@ import "./index.css";
 
 export default function Controller() {
 //   const socket = io("http://localhost:8000");
-const socket = io("https://rodel.onrender.com");
+const socket = io("http://rodel.onrender.com");
   const [gamepad, setGamepad] = useState(null);
   const [status, setStatus] = useState(null);
 
@@ -76,9 +76,16 @@ const socket = io("https://rodel.onrender.com");
     handleButtons(currentGamepad.buttons);
     handleSticks(currentGamepad.axes);
   };
-  //   useEffect(() => {
+    useEffect(() => {
 
-  //   }, []);
+      socket.on("recieve button press", (currentGamepad) => {
+          //   console.log(currentGamepad);
+        //   if (!gamepad) {
+            setStatus("Recieving");
+            receiveButtonPress(currentGamepad);
+        //   }
+        });
+    }, []);
 
   useEffect(() => {
     if (gamepad) {
@@ -87,13 +94,6 @@ const socket = io("https://rodel.onrender.com");
       setGamepad(window.navigator.getGamepads()[0]);
     }
     else {
-        socket.on("recieve button press", (currentGamepad) => {
-            //   console.log(currentGamepad);
-            if (!gamepad) {
-              setStatus("Recieving");
-              receiveButtonPress(currentGamepad);
-            }
-          });
     }
   }, [gamepad]);
 
