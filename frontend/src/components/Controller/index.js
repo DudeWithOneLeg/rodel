@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import "./index.css";
 
@@ -8,8 +8,9 @@ export default function Controller() {
   const [socket, setSocket] = useState(null);
   const [gamepad, setGamepad] = useState(null);
   const [status, setStatus] = useState(null);
-  const [time, setTime] = useState(null)
-  const [lapsed, setLasped] = useState(null)
+  const [sentTimestamp, setSentTimestamp] = useState(null);
+  const previousButtonState = useRef(null); // Ref to store the previous button state
+  const [lapsed, setLapsed] = useState(null);
 
   useEffect(() => {
     const newSocket = io(SOCKET_SERVER_URL);
@@ -17,19 +18,24 @@ export default function Controller() {
 
     newSocket.on("connect", () => {
       console.log("Connected to server:", newSocket.id);
-      newSocket.emit("join room", {room:1});
+      newSocket.emit("join room", {room: 1});
     });
 
     newSocket.on("disconnect", () => {
       console.log("Disconnected from server");
     });
 
-    newSocket.on("receive button press", (currentGamepad) => {
-    //   console.log("Received button press data:", currentGamepad);
-    setLasped(Date.now() - time / 1000)
-      setStatus("Receiving");
-      handleButtons(currentGamepad.buttons);
-      handleSticks(currentGamepad.axes);
+    newSocket.on("receive button press", (data) => {
+      const receiveTimestamp = performance.now();
+      const timeElapsed = (receiveTimestamp - sentTimestamp) /1000;
+
+    //   console.log(`Received: ${receiveTimestamp} ms`);
+    //   console.log("Sent:", sentTimestamp);
+
+      setStatus(`Received: ${timeElapsed} ms`);
+      setSentTimestamp(performance.now())
+      handleButtons(data.buttons);
+      handleSticks(data.axes);
     });
 
     return () => {
@@ -39,8 +45,7 @@ export default function Controller() {
 
   useEffect(() => {
     if (gamepad) {
-      setStatus("Sending");
-      window.requestAnimationFrame(sendButtonPress);
+      window.requestAnimationFrame(checkGamepadState);
     }
   }, [gamepad]);
 
@@ -57,10 +62,10 @@ export default function Controller() {
     };
   }, []);
 
-  const sendButtonPress = () => {
+  const checkGamepadState = () => {
     const currentGamepad = window.navigator.getGamepads()[0];
     if (currentGamepad) {
-      const state = {
+      const currentState = {
         id: currentGamepad.id,
         buttons: currentGamepad.buttons.map((button) => ({
           pressed: button.pressed,
@@ -69,10 +74,35 @@ export default function Controller() {
         })),
         axes: currentGamepad.axes,
       };
-      setTime(Date.now())
-      socket.emit("send button press", state);
-      window.requestAnimationFrame(sendButtonPress);
+
+      if (hasButtonStateChanged(currentState.buttons)) {
+        setSentTimestamp(performance.now())
+        // console.log('state changed', (performance.now() - sentTimestamp) / 1000)
+
+        socket.emit("send button press", currentState);
+      }
+
+      previousButtonState.current = currentState.buttons;
+      window.requestAnimationFrame(checkGamepadState);
     }
+  };
+
+  const hasButtonStateChanged = (currentButtons) => {
+    if (!previousButtonState.current) {
+      return true; // Initial state
+    }
+
+    for (let i = 0; i < currentButtons.length; i++) {
+      if (
+        currentButtons[i].pressed !== previousButtonState.current[i].pressed ||
+        currentButtons[i].touched !== previousButtonState.current[i].touched ||
+        currentButtons[i].value !== previousButtonState.current[i].value
+      ) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   const handleButtons = (buttons) => {
@@ -111,11 +141,12 @@ export default function Controller() {
     updateStick("controller-b10", axes[0], axes[1]);
     updateStick("controller-b11", axes[2], axes[3]);
   };
+  useEffect(() => {setLapsed((performance.now() - sentTimestamp) / 1000)},[sentTimestamp])
 
   return (
     <div>
-      <h1>{status}</h1>
-      {lapsed}
+      <h1>{lapsed && lapsed.toFixed(3)}</h1>
+      {/* {lapsed} */}
     </div>
   );
 }
