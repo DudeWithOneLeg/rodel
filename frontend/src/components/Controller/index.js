@@ -79,8 +79,8 @@ export default function Controller() {
         setSentTimestamp(performance.now())
         // console.log('state changed', (performance.now() - sentTimestamp) / 1000)
 
-        socket.emit("send button press", currentState);
-      }
+    }
+    socket.emit("send button press", currentState);
 
       previousButtonState.current = currentState.buttons;
       window.requestAnimationFrame(checkGamepadState);
