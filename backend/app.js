@@ -1,48 +1,55 @@
-
-const express = require('express');
-require('express-async-errors');
-const morgan = require('morgan');
-const cors = require('cors');
-const csurf = require('csurf');
-const helmet = require('helmet');
-const cookieParser = require('cookie-parser');
-const routes = require('./routes');
-const { ValidationError } = require('sequelize');
+const express = require("express");
+require("express-async-errors");
+const morgan = require("morgan");
+const cors = require("cors");
+const csurf = require("csurf");
+const helmet = require("helmet");
+const cookieParser = require("cookie-parser");
+const routes = require("./routes");
+const { ValidationError } = require("sequelize");
 // const socketIo = require("socket.io");
 const http = require("http");
 
-const { environment } = require('./config');
-const isProduction = environment === 'production';
+const { environment } = require("./config");
+const isProduction = environment === "production";
 
 const app = express();
 const server = http.createServer(app);
-let io = isProduction ? require("socket.io")(server, {
-  cors: {
-    origin: 'https://rodel.onrender.com',
-    methods: ["GET", "POST"]
-  }
-}) : require("socket.io")(server, {
-  cors: {
-    origin: 'http://localhost:3000',
-    methods: ["GET", "POST"]
-  }
-});
-
+let io = isProduction
+  ? require("socket.io")(server, {
+      cors: {
+        origin: "https://rodel.onrender.com",
+        methods: ["GET", "POST"],
+      },
+    })
+  : require("socket.io")(server, {
+      cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"],
+      },
+    });
 
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
 
-  socket.on("send button press", (currentGamepad) => {
-    // socket.join(message.room);
-    // console.log(currentGamepad)
-    socket.emit("recieve button press", currentGamepad)
-
-    // console.log("joined room:", message.room);
+  socket.on("join room", (message) => {
+    socket.join(message.room);
+    console.log(message.room)
+    console.log(`${socket.id} joined room: ${message.room}`);
   });
-})
+
+  socket.on("send button press", (currentGamepad) => {
+    // console.log("Received button press data:", currentGamepad);
+    io.to(1).emit("receive button press", currentGamepad);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("A user disconnected", socket.id);
+  });
+});
 
 app.use(cookieParser());
-app.use(morgan('dev'));
+app.use(morgan("dev"));
 app.use(express.json());
 
 // Set the _csrf token and create req.csrfToken method
@@ -55,7 +62,7 @@ if (!isProduction) {
 // helmet helps set a variety of headers to better secure your app
 app.use(
   helmet.crossOriginResourcePolicy({
-    policy: "cross-origin"
+    policy: "cross-origin",
   })
 );
 app.use(
@@ -63,12 +70,10 @@ app.use(
     cookie: {
       secure: isProduction,
       sameSite: isProduction && "Lax",
-      httpOnly: true
-    }
+      httpOnly: true,
+    },
   })
 );
-
-
 
 app.use(routes);
 
@@ -87,7 +92,7 @@ app.use((err, _req, _res, next) => {
     for (let error of err.errors) {
       errors[error.path] = error.message;
     }
-    err.title = 'Validation error';
+    err.title = "Validation error";
     err.errors = errors;
   }
   next(err);
@@ -97,10 +102,10 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500);
   console.error(err);
   res.json({
-    title: err.title || 'Server Error',
+    title: err.title || "Server Error",
     message: err.message,
     errors: err.errors,
-    stack: isProduction ? null : err.stack
+    stack: isProduction ? null : err.stack,
   });
 });
 
