@@ -8,6 +8,8 @@ export default function Controller() {
   const [socket, setSocket] = useState(null);
   const [gamepad, setGamepad] = useState(null);
   const [status, setStatus] = useState(null);
+  const [time, setTime] = useState(null)
+  const [lapsed, setLasped] = useState(null)
 
   useEffect(() => {
     const newSocket = io(SOCKET_SERVER_URL);
@@ -24,6 +26,7 @@ export default function Controller() {
 
     newSocket.on("receive button press", (currentGamepad) => {
     //   console.log("Received button press data:", currentGamepad);
+    setLasped(Date.now() - time / 1000)
       setStatus("Receiving");
       handleButtons(currentGamepad.buttons);
       handleSticks(currentGamepad.axes);
@@ -66,6 +69,7 @@ export default function Controller() {
         })),
         axes: currentGamepad.axes,
       };
+      setTime(Date.now())
       socket.emit("send button press", state);
       window.requestAnimationFrame(sendButtonPress);
     }
@@ -111,6 +115,7 @@ export default function Controller() {
   return (
     <div>
       <h1>{status}</h1>
+      {lapsed}
     </div>
   );
 }
