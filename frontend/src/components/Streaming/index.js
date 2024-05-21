@@ -9,7 +9,16 @@ const Streaming = () => {
     const [socket] = useState(() => io.connect('/'));
     const localVideoRef = useRef();
     const remoteVideoRef = useRef();
+    const [iceCandidates, setIceCandidates] = useState([]);
+    const [remoteSocketId, setRemoteSocketId] = useState('');
     const pcRef = useRef(new RTCPeerConnection());
+
+
+    const processQueuedIceCandidates = () => {
+        const pc = pcRef.current;
+        iceCandidates.forEach(candidate => pc.addIceCandidate(new RTCIceCandidate(candidate)));
+        setIceCandidates([]);
+    };
 
     useEffect(() => {
         const pc = pcRef.current;
@@ -20,14 +29,20 @@ const Streaming = () => {
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             socket.emit('answer', { sdp: pc.localDescription, target: sender });
+            processQueuedIceCandidates();
         });
 
         socket.on('answer', async ({ sdp }) => {
             await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+            processQueuedIceCandidates();
         });
 
         socket.on('ice-candidate', ({ candidate }) => {
-            pc.addIceCandidate(new RTCIceCandidate(candidate));
+            if (pc.remoteDescription) {
+                pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } else {
+                setIceCandidates(prev => [...prev, candidate]);
+            }
         });
 
         pc.onicecandidate = (event) => {
@@ -54,7 +69,7 @@ const Streaming = () => {
             pc.close();
             socket.disconnect();
         };
-    }, [socket]);
+    }, [socket, remoteSocketId]);
 
     const callPeer = async () => {
         const pc = pcRef.current;
@@ -63,11 +78,12 @@ const Streaming = () => {
         socket.emit('offer', { sdp: pc.localDescription, target: remoteSocketId });
     };
 
-    const [remoteSocketId, setRemoteSocketId] = useState('');
+
 
     return (
         <div>
             <h1>WebRTC Video Chat</h1>
+            {/* {socket.id} */}
             <input
                 type="text"
                 placeholder="Remote socket ID"
