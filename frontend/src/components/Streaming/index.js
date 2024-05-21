@@ -1,94 +1,86 @@
 import React, { useRef, useEffect, useState } from 'react';
 import io from 'socket.io-client';
+import Peer from 'peerjs';
+
+const SOCKET_SERVER_URL = process.env.NODE_ENV === "production" ? "https://rodel.onrender.com" : "http://localhost:8000";
+const socket = io(SOCKET_SERVER_URL);
 
 const Streaming = () => {
-  const [isStreaming, setIsStreaming] = useState(false);
-  const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
-  const socketRef = useRef(null);
-  const peerConnectionRef = useRef(null);
+    const [socket] = useState(() => io.connect('/'));
+    const localVideoRef = useRef();
+    const remoteVideoRef = useRef();
+    const pcRef = useRef(new RTCPeerConnection());
 
-  useEffect(() => {
-    const SOCKET_SERVER_URL = process.env.NODE_ENV === "production" ? "https://rodel.onrender.com" : "http://localhost:8000";
-    socketRef.current = io(SOCKET_SERVER_URL);
+    useEffect(() => {
+        const pc = pcRef.current;
 
-    socketRef.current.on('offer', handleReceiveOffer);
-    socketRef.current.on('answer', handleReceiveAnswer);
-    socketRef.current.on('ice-candidate', handleReceiveIceCandidate);
+        socket.on('offer', async ({ sdp, sender }) => {
+            if (pc.signalingState !== 'stable') return;
+            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit('answer', { sdp: pc.localDescription, target: sender });
+        });
 
-    return () => {
-      socketRef.current.disconnect();
-    };
-  }, []);
+        socket.on('answer', async ({ sdp }) => {
+            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        });
 
-  const handleReceiveOffer = async (offer) => {
-    peerConnectionRef.current = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    });
+        socket.on('ice-candidate', ({ candidate }) => {
+            pc.addIceCandidate(new RTCIceCandidate(candidate));
+        });
 
-    peerConnectionRef.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        socketRef.current.emit('ice-candidate', event.candidate);
-      }
-    };
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                socket.emit('ice-candidate', { candidate: event.candidate, target: remoteSocketId });
+            }
+        };
 
-    peerConnectionRef.current.ontrack = (event) => {
-      remoteVideoRef.current.srcObject = event.streams[0];
-    };
+        pc.ontrack = (event) => {
+            if (remoteVideoRef.current) {
+                remoteVideoRef.current.srcObject = event.streams[0];
+            }
+        };
 
-    await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await peerConnectionRef.current.createAnswer();
-    await peerConnectionRef.current.setLocalDescription(answer);
-    socketRef.current.emit('answer', answer);
-  };
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then((stream) => {
+                if (localVideoRef.current) {
+                    localVideoRef.current.srcObject = stream;
+                }
+                stream.getTracks().forEach(track => pc.addTrack(track, stream));
+            });
 
-  const handleReceiveAnswer = async (answer) => {
-    await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
-  };
+        return () => {
+            pc.close();
+            socket.disconnect();
+        };
+    }, [socket]);
 
-  const handleReceiveIceCandidate = async (candidate) => {
-    try {
-      await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-    } catch (e) {
-      console.error('Error adding received ice candidate', e);
-    }
-  };
-
-  const startStreaming = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    localVideoRef.current.srcObject = stream;
-
-    peerConnectionRef.current = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    });
-
-    stream.getTracks().forEach((track) => {
-      peerConnectionRef.current.addTrack(track, stream);
-    });
-
-    peerConnectionRef.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        socketRef.current.emit('ice-candidate', event.candidate);
-      }
+    const callPeer = async () => {
+        const pc = pcRef.current;
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit('offer', { sdp: pc.localDescription, target: remoteSocketId });
     };
 
-    const offer = await peerConnectionRef.current.createOffer();
-    await peerConnectionRef.current.setLocalDescription(offer);
-    socketRef.current.emit('offer', offer);
+    const [remoteSocketId, setRemoteSocketId] = useState('');
 
-    setIsStreaming(true);
-  };
-
-  return (
-    <div>
-      <h1>One-Way Video Streaming</h1>
-      <video ref={localVideoRef} autoPlay muted style={{ width: '300px' }}></video>
-      <video ref={remoteVideoRef} autoPlay style={{ width: '300px' }}></video>
-      {!isStreaming && (
-        <button onClick={startStreaming}>Start Streaming</button>
-      )}
-    </div>
-  );
+    return (
+        <div>
+            <h1>WebRTC Video Chat</h1>
+            <input
+                type="text"
+                placeholder="Remote socket ID"
+                value={remoteSocketId}
+                onChange={(e) => setRemoteSocketId(e.target.value)}
+            />
+            <button onClick={callPeer}>Call</button>
+            <div>
+                <video ref={localVideoRef} autoPlay muted style={{ width: '300px' }}></video>
+                <video ref={remoteVideoRef} autoPlay style={{ width: '300px' }}></video>
+            </div>
+        </div>
+    );
 };
 
 export default Streaming;

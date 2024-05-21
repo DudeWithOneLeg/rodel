@@ -8,6 +8,7 @@ const cookieParser = require("cookie-parser");
 const routes = require("./routes");
 const { ValidationError } = require("sequelize");
 // const socketIo = require("socket.io");
+const { ExpressPeerServer } = require("peer");
 const http = require("http");
 
 const { environment } = require("./config");
@@ -28,14 +29,19 @@ let io = isProduction
         methods: ["GET", "POST"],
       },
     });
-
+const peerServer = ExpressPeerServer(server, {
+  debug: true,
+  path: "/",
+});
+app.use('/peerjs', peerServer);
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
+  socket.broadcast.emit("user-connected", { userId: socket.id });
 
-  socket.on("join room", (message) => {
-    socket.join(message.room);
-    console.log(message.room)
-    console.log(`${socket.id} joined room: ${message.room}`);
+  socket.on("join room", ({ room }) => {
+    socket.join(room);
+    console.log(room);
+    console.log(`${socket.id} joined room: ${room}`);
   });
 
   socket.on("send button press", (currentGamepad) => {
@@ -47,18 +53,20 @@ io.on("connection", (socket) => {
     console.log("A user disconnected", socket.id);
   });
 
-  socket.on('offer', (data) => {
-    socket.broadcast.emit('offer', data);
+  socket.on("offer", (data) => {
+    console.log("offer");
+    socket.broadcast.emit("offer", data);
   });
 
-  socket.on('answer', (data) => {
-    socket.broadcast.emit('answer', data);
+  socket.on("answer", (data) => {
+    console.log("answer");
+    socket.broadcast.emit("answer", data);
   });
 
-  socket.on('ice-candidate', (data) => {
-    socket.broadcast.emit('ice-candidate', data);
+  socket.on("ice-candidate", (data) => {
+    console.log("ice");
+    socket.broadcast.emit("ice-candidate", data);
   });
-
 });
 
 app.use(cookieParser());
