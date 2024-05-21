@@ -46,6 +46,19 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.id);
   });
+
+  socket.on('offer', (data) => {
+    socket.broadcast.emit('offer', data);
+  });
+
+  socket.on('answer', (data) => {
+    socket.broadcast.emit('answer', data);
+  });
+
+  socket.on('ice-candidate', (data) => {
+    socket.broadcast.emit('ice-candidate', data);
+  });
+
 });
 
 app.use(cookieParser());

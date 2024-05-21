@@ -7,6 +7,7 @@
     import * as sessionActions from "./store/session";
     import Navigation from "./components/Navigation";
     import Controller from "./components/Controller";
+    import Streaming from "./components/Streaming";
 
     function App() {
       const dispatch = useDispatch();
@@ -19,6 +20,7 @@
         <>
           <Navigation isLoaded={isLoaded} />
           <Controller />
+          <Streaming />
           {isLoaded && (
             <Switch>
               <Route path="/login">
