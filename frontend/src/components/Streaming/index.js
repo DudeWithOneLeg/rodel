@@ -9,7 +9,8 @@ const Streaming = () => {
   const peerConnectionRef = useRef(null);
 
   useEffect(() => {
-    socketRef.current = io('http://localhost:3000');
+    const SOCKET_SERVER_URL = process.env.NODE_ENV === "production" ? "https://rodel.onrender.com" : "http://localhost:8000";
+    socketRef.current = io(SOCKET_SERVER_URL);
 
     socketRef.current.on('offer', handleReceiveOffer);
     socketRef.current.on('answer', handleReceiveAnswer);
