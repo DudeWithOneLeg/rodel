@@ -2,6 +2,10 @@
     "name": "frontend",
     "version": "0.1.0",
     "private": true,
+    "options":{
+        "allowedHosts":["localhost",".localhost"],
+        "proxy":"https://localhost:8000"
+    },
     "dependencies": {
         "@testing-library/jest-dom": "^5.17.0",
         "@testing-library/react": "^11.2.7",
@@ -40,6 +44,5 @@
     },
     "devDependencies": {
         "redux-logger": "^3.0.6"
-    },
-    "proxy": "http://localhost:8000"
+    }
 }
