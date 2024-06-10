@@ -94,9 +94,9 @@ export default function Controller() {
 
     for (let i = 0; i < currentButtons.length; i++) {
       if (
-        currentButtons[i].pressed !== previousButtonState.current[i].pressed ||
-        currentButtons[i].touched !== previousButtonState.current[i].touched ||
-        currentButtons[i].value !== previousButtonState.current[i].value
+        currentButtons[i].pressed !== previousButtonState.current.buttons[i].pressed ||
+        currentButtons[i].touched !== previousButtonState.current.buttons[i].touched ||
+        currentButtons[i].value !== previousButtonState.current.buttons[i].value
       ) {
         return true;
       }
