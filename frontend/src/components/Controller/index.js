@@ -75,19 +75,19 @@ export default function Controller() {
         axes: currentGamepad.axes,
       };
 
-      if (hasButtonStateChanged(currentState.buttons)) {
+      if (hasButtonStateChanged(currentState.buttons, currentState.axes)) {
         setSentTimestamp(performance.now())
         // console.log('state changed', (performance.now() - sentTimestamp) / 1000)
 
     }
     socket.emit("send button press", currentState);
 
-      previousButtonState.current = currentState.buttons;
+      previousButtonState.current = currentState;
       window.requestAnimationFrame(checkGamepadState);
     }
   };
 
-  const hasButtonStateChanged = (currentButtons) => {
+  const hasButtonStateChanged = (currentButtons, currentAxes) => {
     if (!previousButtonState.current) {
       return true; // Initial state
     }
@@ -97,6 +97,13 @@ export default function Controller() {
         currentButtons[i].pressed !== previousButtonState.current[i].pressed ||
         currentButtons[i].touched !== previousButtonState.current[i].touched ||
         currentButtons[i].value !== previousButtonState.current[i].value
+      ) {
+        return true;
+      }
+    }
+    for (let i = 0; i < currentAxes.length; i++) {
+      if (
+        currentAxes[i] !== previousButtonState.current.axes[i]
       ) {
         return true;
       }
