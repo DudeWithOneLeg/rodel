@@ -8,6 +8,9 @@
     import Navigation from "./components/Navigation";
     import Controller from "./components/Controller";
     import Streaming from "./components/Streaming";
+    import {io} from 'socket.io-client'
+
+const SOCKET_SERVER_URL = process.env.NODE_ENV === "production" ? "https://rodel.onrender.com" : "http://localhost:8000";
 
     function App() {
       const dispatch = useDispatch();
