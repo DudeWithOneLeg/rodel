@@ -5,7 +5,7 @@ import Peer from 'peerjs';
 const SOCKET_SERVER_URL = process.env.NODE_ENV === "production" ? "https://rodel.onrender.com" : "http://localhost:8000";
 //const socket = io(SOCKET_SERVER_URL);
 
-const Streaming = () => {
+const Streaming = ({socket}) => {
     const [peerId, setPeerId] = useState(null);
     const [targetPeerId, setTargetPeerId] = useState('python-sender');
     const [conn, setConn] = useState(null);
