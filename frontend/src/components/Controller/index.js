@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import "./index.css";
 
-const SOCKET_SERVER_URL = process.env.NODE_ENV === "production" ? "https://rodel.onrender.com" : "http://localhost:8000";
 
-export default function Controller() {
+
+export default function Controller({newSocket}) {
   const [socket, setSocket] = useState(null);
   const [gamepad, setGamepad] = useState(null);
   const [status, setStatus] = useState(null);
@@ -13,7 +13,6 @@ export default function Controller() {
   const [lapsed, setLapsed] = useState(null);
 
   useEffect(() => {
-    const newSocket = io(SOCKET_SERVER_URL);
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
