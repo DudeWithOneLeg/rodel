@@ -15,15 +15,18 @@ const SOCKET_SERVER_URL = process.env.NODE_ENV === "production" ? "https://rodel
     function App() {
       const dispatch = useDispatch();
       const [isLoaded, setIsLoaded] = useState(false);
+        const [newSocket, setNewSocket] = useState(null)
       useEffect(() => {
         dispatch(sessionActions.restoreUser()).then(() => setIsLoaded(true));
+          const socket =io(SOCKET_SERVER_URL)
+          setNewSocket(socket)
       }, [dispatch]);
 
       return (
         <>
           <Navigation isLoaded={isLoaded} />
-          <Controller />
-          <Streaming />
+          <Controller socket={newSocket}/>
+          <Streaming socket={newSocket}/>
           {isLoaded && (
             <Switch>
               <Route path="/login">
