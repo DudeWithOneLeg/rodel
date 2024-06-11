@@ -13,7 +13,7 @@ const http = require("http");
 
 const { environment } = require("./config");
 const isProduction = environment === "production";
-
+const peers = {};
 const app = express();
 const server = http.createServer(app);
 let io = isProduction
@@ -44,6 +44,19 @@ io.on("connection", (socket) => {
     console.log(`${socket.id} joined room: ${room}`);
   });
 
+  socket.on('register', (peerId) => {
+        peers[peerId] = socket.id;
+    });
+
+    socket.on('signal', ({ targetPeerId, payload }) => {
+        if (peers[targetPeerId]) {
+            io.to(peers[targetPeerId]).emit('signal', {
+                peerId: socket.id,
+                payload,
+            });
+        }
+    });
+
   socket.on("send button press", (currentGamepad) => {
     // console.log("Received button press data:", currentGamepad);
     io.to(1).emit("receive button press", currentGamepad);
@@ -51,6 +64,12 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.id);
+    for (let peerId in peers) {
+            if (peers[peerId] === socket.id) {
+                delete peers[peerId];
+                break;
+            }
+    }
   });
 
   socket.on("offer", (data) => {
