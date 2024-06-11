@@ -25,7 +25,7 @@ const SOCKET_SERVER_URL = process.env.NODE_ENV === "production" ? "https://rodel
       return (
         <>
           <Navigation isLoaded={isLoaded} />
-          <Controller socket={newSocket}/>
+          <Controller newSocket={newSocket}/>
           <Streaming socket={newSocket}/>
           {isLoaded && (
             <Switch>
