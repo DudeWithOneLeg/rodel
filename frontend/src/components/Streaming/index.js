@@ -36,13 +36,13 @@ const Streaming = ({ socket }) => {
           call.on("stream", (remoteStream) => {
             videoRef.current.srcObject = remoteStream;
           });
-          console.log(peer._connections)
+          console.log(peer._connections, senderId)
           if (peer._connections[senderId] && peer._connections[senderId][0]) {
-            await peer._connections[senderId][0].peerConnection.setRemoteDescription(payload);
+            await peer._connections[0].peerConnection.setRemoteDescription(payload);
         }
 
         } else if (payload.type === "ice") {
-          await peer._connections[senderId][0].peerConnection.addIceCandidate(
+          await peer._connections[0].peerConnection.addIceCandidate(
             payload
           );
         }
