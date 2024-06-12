@@ -38,7 +38,7 @@ const Streaming = ({ socket }) => {
           });
           console.log(peer._connections)
           if (peer._connections) {
-            await peer.peerConnection.setRemoteDescription(payload);
+            await call.peerConnection.setRemoteDescription(payload);
             console.log('this hit')
         }
 
