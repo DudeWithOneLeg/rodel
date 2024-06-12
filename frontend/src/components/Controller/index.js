@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { io } from "socket.io-client";
 import "./index.css";
 
 
@@ -15,27 +14,31 @@ export default function Controller({newSocket}) {
   useEffect(() => {
     setSocket(newSocket);
 
-    newSocket.on("connect", () => {
-      console.log("Connected to server:", newSocket.id);
-      newSocket.emit("join room", {room: 1});
-    });
+    if (socket) {
 
-    newSocket.on("disconnect", () => {
-      console.log("Disconnected from server");
-    });
+      newSocket.on("connect", () => {
+        console.log("Connected to server:", newSocket.id);
+        newSocket.emit("join room", {room: 1});
+      });
 
-    newSocket.on("receive button press", (data) => {
-      const receiveTimestamp = performance.now();
-      const timeElapsed = (receiveTimestamp - sentTimestamp) /1000;
+      newSocket.on("disconnect", () => {
+        console.log("Disconnected from server");
+      });
 
-    //   console.log(`Received: ${receiveTimestamp} ms`);
-    //   console.log("Sent:", sentTimestamp);
+      newSocket.on("receive button press", (data) => {
+        const receiveTimestamp = performance.now();
+        const timeElapsed = (receiveTimestamp - sentTimestamp) /1000;
 
-      setStatus(`Received: ${timeElapsed} ms`);
-      setSentTimestamp(performance.now())
-      handleButtons(data.buttons);
-      handleSticks(data.axes);
-    });
+      //   console.log(`Received: ${receiveTimestamp} ms`);
+      //   console.log("Sent:", sentTimestamp);
+
+        setStatus(`Received: ${timeElapsed} ms`);
+        setSentTimestamp(performance.now())
+        handleButtons(data.buttons);
+        handleSticks(data.axes);
+      });
+    }
+
 
     return () => {
       newSocket.disconnect();

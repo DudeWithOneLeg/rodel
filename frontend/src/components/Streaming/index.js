@@ -1,5 +1,4 @@
 import React, { useRef, useEffect, useState } from 'react';
-import io from 'socket.io-client';
 import Peer from 'peerjs';
 
 
@@ -33,7 +32,8 @@ const Streaming = ({socket}) => {
             });
         });
 
-        socket.on('signal', async ({ peerId: senderId, payload }) => {
+        if (socket) {
+            socket.on('signal', async ({ peerId: senderId, payload }) => {
             if (payload.type === 'offer') {
                 const call = peer.call(senderId, new MediaStream());
                 call.on('stream', (remoteStream) => {
@@ -44,6 +44,9 @@ const Streaming = ({socket}) => {
                 await peer._connections[senderId][0].peerConnection.addIceCandidate(payload);
             }
         });
+        }
+
+
 
         return () => {
             peer.destroy();
