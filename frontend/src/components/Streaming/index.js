@@ -36,7 +36,7 @@ const Streaming = ({ socket }) => {
           call.on("stream", (remoteStream) => {
             videoRef.current.srcObject = remoteStream;
           });
-          console.log(peer._connections[0])
+          console.log(peer._connections)
           if (peer._connections[senderId] && peer._connections[senderId][0]) {
             await peer._connections[0].peerConnection.setRemoteDescription(payload);
             console.log('this hit')
