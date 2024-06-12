@@ -8,12 +8,10 @@ const cookieParser = require("cookie-parser");
 const routes = require("./routes");
 const { ValidationError } = require("sequelize");
 // const socketIo = require("socket.io");
-const { ExpressPeerServer } = require("peer");
 const http = require("http");
 
 const { environment } = require("./config");
 const isProduction = environment === "production";
-const peers = {};
 const app = express();
 const server = http.createServer(app);
 let io = isProduction
@@ -29,11 +27,6 @@ let io = isProduction
         methods: ["GET", "POST"],
       },
     });
-const peerServer = ExpressPeerServer(server, {
-  debug: true,
-  path: "/",
-});
-app.use('/peerjs', peerServer);
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
   socket.broadcast.emit("user-connected", { userId: socket.id });
@@ -44,18 +37,9 @@ io.on("connection", (socket) => {
     console.log(`${socket.id} joined room: ${room}`);
   });
 
-  socket.on('register', (peerId) => {
-        peers[peerId] = socket.id;
-    });
-
-    socket.on('signal', ({ targetPeerId, payload }) => {
-        if (peers[targetPeerId]) {
-            io.to(peers[targetPeerId]).emit('signal', {
-                peerId: socket.id,
-                payload,
-            });
-        }
-    });
+  socket.on("register", (peerId) => {
+    peers[peerId] = socket.id;
+  });
 
   socket.on("send button press", (currentGamepad) => {
     // console.log("Received button press data:", currentGamepad);
@@ -65,27 +49,24 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.id);
     for (let peerId in peers) {
-            if (peers[peerId] === socket.id) {
-                delete peers[peerId];
-                break;
-            }
+      if (peers[peerId] === socket.id) {
+        delete peers[peerId];
+        break;
+      }
     }
   });
 
-  socket.on("offer", (data) => {
-    console.log("offer");
-    socket.broadcast.emit("offer", data);
-  });
+  socket.on('offer', (offer) => {
+    socket.broadcast.emit('offer', offer);
+});
 
-  socket.on("answer", (data) => {
-    console.log("answer");
-    socket.broadcast.emit("answer", data);
-  });
+socket.on('answer', (answer) => {
+    socket.broadcast.emit('answer', answer);
+});
 
-  socket.on("ice-candidate", (data) => {
-    console.log("ice");
-    socket.broadcast.emit("ice-candidate", data);
-  });
+socket.on('candidate', (candidate) => {
+    socket.broadcast.emit('candidate', candidate);
+});
 });
 
 app.use(cookieParser());

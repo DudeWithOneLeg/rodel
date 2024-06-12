@@ -1,58 +1,39 @@
 import React, { useRef, useEffect, useState } from "react";
-import Peer from "peerjs";
 
 const Streaming = ({ socket }) => {
-  const [peerId, setPeerId] = useState(null);
-  const [conn, setConn] = useState(null);
-  const videoRef = useRef(null);
+    const localVideoRef = useRef(null);
+    const peerConnection = useRef(null);
 
   useEffect(() => {
-    const peer = new Peer("react-receiver");
+    socket.on('offer', async (offer) => {
+        peerConnection.current = new RTCPeerConnection();
 
-    peer.on("open", (id) => {
-      setPeerId(id);
-      console.log("My peer ID is:", id);
-      socket.emit("register", id);
+        peerConnection.current.onicecandidate = (event) => {
+            if (event.candidate) {
+                socket.emit('candidate', event.candidate);
+            }
+        };
+
+        peerConnection.current.ontrack = (event) => {
+            localVideoRef.current.srcObject = event.streams[0];
+        };
+
+        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await peerConnection.current.createAnswer();
+        await peerConnection.current.setLocalDescription(answer);
+        socket.emit('answer', answer);
     });
 
-    peer.on("connection", (connection) => {
-      setConn(connection);
-      connection.on("data", (data) => {
-        console.log("Received:", data);
-      });
-    });
-
-    peer.on("call", (call) => {
-      call.answer();
-      call.on("stream", (remoteStream) => {
-        videoRef.current.srcObject = remoteStream;
-      });
-    });
-
-    if (socket) {
-      socket.on("signal", async ({ peerId: senderId, payload }) => {
-        if (payload.type === "offer") {
-          const call = peer.call(senderId, new MediaStream());
-          call.on("stream", (remoteStream) => {
-            videoRef.current.srcObject = remoteStream;
-          });
-          console.log(peer._connections)
-          if (peer._connections) {
-            await call.peerConnection.setRemoteDescription(payload);
-            console.log('this hit')
+    socket.on('candidate', async (candidate) => {
+        try {
+            await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+            console.error('Error adding received ice candidate', e);
         }
-
-        } else if (payload.type === "ice") {
-
-          await peer.peerConnection[senderId][0].addIceCandidate(
-            payload
-          );
-        }
-      });
-    }
+    });
 
     return () => {
-      peer.destroy();
+      peerConnection.current.close()
       socket.close();
     };
   }, [socket]);
@@ -60,7 +41,7 @@ const Streaming = ({ socket }) => {
   return (
     <div>
       <div>
-        <video ref={videoRef} autoPlay muted style={{ width: "300px" }}></video>
+        <video ref={localVideoRef} autoPlay muted style={{ width: "300px" }}></video>
       </div>
     </div>
   );
