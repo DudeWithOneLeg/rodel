@@ -2,12 +2,10 @@ import React, { useRef, useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import Peer from 'peerjs';
 
-const SOCKET_SERVER_URL = process.env.NODE_ENV === "production" ? "https://rodel.onrender.com" : "http://localhost:8000";
-//const socket = io(SOCKET_SERVER_URL);
+
 
 const Streaming = ({socket}) => {
     const [peerId, setPeerId] = useState(null);
-    const [targetPeerId, setTargetPeerId] = useState('python-sender');
     const [conn, setConn] = useState(null);
     const videoRef = useRef(null);
 
@@ -46,20 +44,8 @@ const Streaming = ({socket}) => {
                 await peer._connections[senderId][0].peerConnection.addIceCandidate(payload);
             }
         });
+
         return () => {
-            pc.close();
-            socket.disconnect();
-        };
-    }, [socket, remoteSocketId]);
-
-    const callPeer = async () => {
-        const pc = pcRef.current;
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        socket.emit('offer', { sdp: pc.localDescription, target: remoteSocketId });
-    };
-
-return () => {
             peer.destroy();
             socket.close();
         };
@@ -67,9 +53,9 @@ return () => {
 
     return (
         <div>
-            
+
             <div>
-                <video ref={videoref} autoPlay muted style={{ width: '300px'}></video>
+                <video ref={videoRef} autoPlay muted style={{ width: '300px'}}></video>
             </div>
         </div>
     );
