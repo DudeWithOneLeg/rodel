@@ -21,7 +21,7 @@ function App() {
 
   useEffect(() => {
     dispatch(sessionActions.restoreUser()).then(() => setIsLoaded(true));
-    const socket = io("http://localhost:8000");
+    const socket = io(SOCKET_SERVER_URL);
     setNewSocket(socket);
   }, [dispatch]);
 
