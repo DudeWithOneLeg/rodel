@@ -22,10 +22,12 @@ const Streaming = ({ socket }) => {
             localVideoRef.current.srcObject = event.streams[0];
         };
 
+        peerConnection.current.addTransceiver('video', { direction: 'recvonly' });
+
         await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
         const answer = await peerConnection.current.createAnswer();
         await peerConnection.current.setLocalDescription(answer);
-        socket.emit('answer', answer);
+        socket.emit('answer', peerConnection.current.localDescription);
     });
 
     socket.on('candidate', async (candidate) => {
