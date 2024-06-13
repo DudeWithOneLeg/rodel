@@ -37,9 +37,6 @@ io.on("connection", (socket) => {
     console.log(`${socket.id} joined room: ${room}`);
   });
 
-  socket.on("register", (peerId) => {
-    peers[peerId] = socket.id;
-  });
 
   socket.on("send button press", (currentGamepad) => {
     // console.log("Received button press data:", currentGamepad);
@@ -48,25 +45,25 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.id);
-    for (let peerId in peers) {
-      if (peers[peerId] === socket.id) {
-        delete peers[peerId];
-        break;
-      }
-    }
+    // for (let peerId in peers) {
+    //   if (peers[peerId] === socket.id) {
+    //     delete peers[peerId];
+    //     break;
+    //   }
+    // }
   });
 
-  socket.on('offer', (offer) => {
-    socket.broadcast.emit('offer', offer);
-});
+  socket.on("offer", (offer) => {
+    socket.broadcast.emit("offer", offer);
+  });
 
-socket.on('answer', (answer) => {
-    socket.broadcast.emit('answer', answer);
-});
+  socket.on("answer", (answer) => {
+    socket.broadcast.emit("answer", answer);
+  });
 
-socket.on('candidate', (candidate) => {
-    socket.broadcast.emit('candidate', candidate);
-});
+  socket.on("candidate", (candidate) => {
+    socket.broadcast.emit("candidate", candidate);
+  });
 });
 
 app.use(cookieParser());
