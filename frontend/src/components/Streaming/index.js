@@ -10,7 +10,11 @@ const Streaming = ({ socket }) => {
 
         peerConnection.current.onicecandidate = (event) => {
             if (event.candidate) {
-                socket.emit('candidate', event.candidate);
+                socket.emit('candidate', {
+                  candidate: event.candidate.candidate,
+                  sdpMid: event.candidate.sdpMid,
+                  sdpMLineIndex: event.candidate.sdpMLineIndex,
+              });
             }
         };
 
