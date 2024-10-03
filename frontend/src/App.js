@@ -21,7 +21,12 @@ function App() {
 
   useEffect(() => {
     dispatch(sessionActions.restoreUser()).then(() => setIsLoaded(true));
-    const socket = io(SOCKET_SERVER_URL);
+    const socket = io(SOCKET_SERVER_URL, {
+      cors: {
+        origin: ['http://192.168.255.59'],
+        methods: ["GET", "POST"],
+      },
+    });
     setNewSocket(socket);
   }, [dispatch]);
 

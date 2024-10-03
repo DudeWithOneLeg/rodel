@@ -7,7 +7,6 @@ const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const routes = require("./routes");
 const { ValidationError } = require("sequelize");
-// const socketIo = require("socket.io");
 const http = require("http");
 
 const { environment } = require("./config");
@@ -16,53 +15,53 @@ const app = express();
 const server = http.createServer(app);
 let io = isProduction
   ? require("socket.io")(server, {
-      cors: {
-        origin: "https://rodel.onrender.com",
-        methods: ["GET", "POST"],
-      },
-    })
+    cors: {
+      origin: "https://rodel.onrender.com",
+      methods: ["GET", "POST"],
+    },
+  })
   : require("socket.io")(server, {
-      cors: {
-        origin: ["http://localhost:3000"],
-        methods: ["GET", "POST"],
-      },
-    });
-io.on("connection", (socket) => {
-  console.log("A user connected", socket.id);
-  socket.broadcast.emit("user-connected", { userId: socket.id });
-
-  socket.on("join room", ({ room }) => {
-    socket.join(room);
-    console.log(room);
-    console.log(`${socket.id} joined room: ${room}`);
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"],
+    },
   });
 
+io.on("connection", (socket) => {
+  console.log("A user connected", socket.id);
 
-  socket.on("send button press", (currentGamepad) => {
-    // console.log("Received button press data:", currentGamepad);
-    io.to(1).emit("receive button press", currentGamepad);
+  socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    console.log(`${socket.id} joined room: ${roomId}`);
+
+    // Check the number of clients in the room
+    const clientsInRoom = io.sockets.adapter.rooms.get(roomId);
+    const numClients = clientsInRoom ? clientsInRoom.size : 0;
+
+    // If more than one client is in the room, request the new client to create an offer
+    if (numClients > 1) {
+      socket.emit("create-offer");
+      console.log("create-offer");
+    }
+  });
+
+  socket.on("offer", ({ offer, roomId }) => {
+    socket.to(roomId).emit("offer", offer);
+    console.log("offer sent to room:", roomId);
+  });
+
+  socket.on("answer", ({ answer, roomId }) => {
+    socket.to(roomId).emit("answer", answer);
+    console.log("answer sent to room:", roomId);
+  });
+
+  socket.on("ice-candidate", ({ candidate, roomId }) => {
+    socket.to(roomId).emit("ice-candidate", candidate);
+    console.log("ice-candidate sent to room:", candidate);
   });
 
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.id);
-    // for (let peerId in peers) {
-    //   if (peers[peerId] === socket.id) {
-    //     delete peers[peerId];
-    //     break;
-    //   }
-    // }
-  });
-
-  socket.on("offer", (offer) => {
-    socket.broadcast.emit("offer", offer);
-  });
-
-  socket.on("answer", (answer) => {
-    socket.broadcast.emit("answer", answer);
-  });
-
-  socket.on("candidate", (candidate) => {
-    socket.broadcast.emit("candidate", candidate);
   });
 });
 
@@ -70,14 +69,10 @@ app.use(cookieParser());
 app.use(morgan("dev"));
 app.use(express.json());
 
-//Set the _csrf token and create req.csrfToken method
-//Security Middleware
 if (!isProduction) {
-  // enable cors only in development
   app.use(cors());
 }
 
-//helmet helps set a variety of headers to better secure your app
 app.use(
   helmet.crossOriginResourcePolicy({
     policy: "cross-origin",
@@ -104,7 +99,6 @@ app.use((_req, _res, next) => {
 });
 
 app.use((err, _req, _res, next) => {
-  // check if error is a Sequelize error:
   if (err instanceof ValidationError) {
     let errors = {};
     for (let error of err.errors) {
