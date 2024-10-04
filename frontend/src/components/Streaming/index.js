@@ -16,21 +16,29 @@ const Streaming = ({ socket }) => {
     if (user) {
       console.log('Getting token');
       dispatch(sessionActions.getAuthToken(user.id))
-      .then(token => {
-        if (token) {
-          setIceServers(token.iceServers);
-
-        }
-      })
-      .catch(error => console.error('Error getting token:', error));
+        .then(token => {
+          token = JSON.parse(token)
+          console.log(token.iceServers)
+          if (token && token.iceServers) {
+            console.log('Received ICE servers:', token.iceServers);
+            setIceServers(token.iceServers);
+          } else {
+            console.error('No ICE servers received in the token');
+          }
+        })
+        .catch(error => console.error('Error getting token:', error));
     }
   }, [dispatch, user]);
 
   const initializePeerConnection = useCallback(() => {
     if (!peerConnectionRef.current) {
-      console.log(iceServers)
-      peerConnectionRef.current = new RTCPeerConnection(iceServers);
-      console.log(peerConnectionRef.current);
+      console.log('Initializing PeerConnection with ICE servers:', iceServers);
+      const configuration = {
+        iceServers: iceServers,
+        iceCandidatePoolSize: 10,
+      };
+      peerConnectionRef.current = new RTCPeerConnection(configuration);
+      console.log('PeerConnection created:', peerConnectionRef.current);
 
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate) {
@@ -44,8 +52,12 @@ const Streaming = ({ socket }) => {
           remoteStreamRef.current.srcObject = event.streams[0];
         }
       };
+
+      peerConnectionRef.current.oniceconnectionstatechange = () => {
+        console.log('ICE connection state:', peerConnectionRef.current.iceConnectionState);
+      };
     }
-  }, [roomId, socket]);
+  }, [roomId, socket, iceServers]);
 
   const createOffer = useCallback(async () => {
     console.log('Creating offer...');
