@@ -15,10 +15,10 @@ const validateLogin = [
   check("password")
     .exists({ checkFalsy: true })
     .withMessage("Please provide a password."),
-  handleValidationErrors,
-];
+    handleValidationErrors,
+  ];
 
-const router = express.Router();
+  const router = express.Router();
 
 router.get("/", (req, res) => {
   const { user } = req;
@@ -71,5 +71,7 @@ router.delete("/", (_req, res) => {
   res.clearCookie("token");
   return res.json({ message: "success" });
 });
+
+
 
 module.exports = router;

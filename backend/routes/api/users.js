@@ -29,6 +29,8 @@ const validateSignup = [
 
 const router = express.Router();
 
+
+
 // Restore session user
 router.get(
   '/',
@@ -71,4 +73,3 @@ router.post(
 );
 
 module.exports = router;
-        

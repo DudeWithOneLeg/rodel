@@ -2,9 +2,12 @@
     "name": "frontend",
     "version": "0.1.0",
     "private": true,
-    "options":{
-        "allowedHosts":["localhost",".localhost"],
-        "proxy":"https://localhost:8000"
+    "options": {
+        "allowedHosts": [
+            "localhost",
+            ".localhost"
+        ],
+        "proxy": "http://localhost:8000"
     },
     "dependencies": {
         "@testing-library/jest-dom": "^5.17.0",
@@ -19,7 +22,8 @@
         "react-scripts": "5.0.1",
         "redux": "^4.2.1",
         "redux-thunk": "^2.4.2",
-        "socket.io-client": "^4.7.5"
+        "socket.io-client": "^4.7.5",
+        "twilio-video": "^2.28.1"
     },
     "scripts": {
         "start": "react-scripts start",
@@ -44,5 +48,6 @@
     },
     "devDependencies": {
         "redux-logger": "^3.0.6"
-    }
+    },
+    "proxy": "http://localhost:8000"
 }

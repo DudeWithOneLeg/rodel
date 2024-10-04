@@ -9,7 +9,10 @@ const routes = require("./routes");
 const { ValidationError } = require("sequelize");
 const http = require("http");
 
+
+
 const { environment } = require("./config");
+
 const isProduction = environment === "production";
 const app = express();
 const server = http.createServer(app);
@@ -26,6 +29,7 @@ let io = isProduction
       methods: ["GET", "POST"],
     },
   });
+
 
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
@@ -87,6 +91,7 @@ app.use(
     },
   })
 );
+
 
 app.use(routes);
 

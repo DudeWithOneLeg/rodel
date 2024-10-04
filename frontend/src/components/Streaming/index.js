@@ -1,21 +1,34 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import * as sessionActions from '../../store/session.js';
 
 const Streaming = ({ socket }) => {
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
   const peerConnectionRef = useRef(null);
+  const [iceServers, setIceServers] = useState([]);
   const [devices, setDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const [roomId, setRoomId] = useState("");
+  const dispatch = useDispatch();
+  const user = useSelector(state => state.session.user);
+  useEffect(() => {
+    if (user) {
+      console.log('Getting token');
+      dispatch(sessionActions.getAuthToken(user.id))
+      .then(token => {
+        if (token) {
+          setIceServers(token.iceServers);
 
-  const iceServers = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-    ],
-  };
+        }
+      })
+      .catch(error => console.error('Error getting token:', error));
+    }
+  }, [dispatch, user]);
 
   const initializePeerConnection = useCallback(() => {
     if (!peerConnectionRef.current) {
+      console.log(iceServers)
       peerConnectionRef.current = new RTCPeerConnection(iceServers);
       console.log(peerConnectionRef.current);
 
