@@ -13,6 +13,19 @@ const Streaming = ({ socket }) => {
   const dispatch = useDispatch();
   const user = useSelector(state => state.session.user);
   useEffect(() => {
+    navigator.mediaDevices.enumerateDevices()
+      .then((deviceInfos) => {
+        const videoDevices = deviceInfos.filter(device => device.kind === 'videoinput');
+        setDevices(videoDevices);
+        if (videoDevices.length > 0) {
+          setSelectedDeviceId(videoDevices[0].deviceId);
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching media devices.', error);
+      });
+  }, []);
+  useEffect(() => {
     if (user) {
       console.log('Getting token');
       dispatch(sessionActions.getAuthToken(user.id))
@@ -44,7 +57,7 @@ const Streaming = ({ socket }) => {
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate) {
           socket.emit('ice-candidate', { candidate: event.candidate, roomId });
-          console.log('ICE candidate sent:', event.candidate);
+          // console.log('ICE candidate sent:', event.candidate);
         }
       };
 
@@ -79,29 +92,76 @@ const Streaming = ({ socket }) => {
     }
   }, [roomId, socket]);
 
-  useEffect(() => {
-    navigator.mediaDevices.enumerateDevices()
-      .then((deviceInfos) => {
-        const videoDevices = deviceInfos.filter(device => device.kind === 'videoinput');
-        setDevices(videoDevices);
-        if (videoDevices.length > 0) {
-          setSelectedDeviceId(videoDevices[0].deviceId);
-        }
-      })
-      .catch((error) => {
-        console.error('Error fetching media devices.', error);
-      });
+  const handleOffer = useCallback(async (offer) => {
+    console.log('Received offer:', offer);
+    if (!peerConnectionRef.current) {
+      console.error('PeerConnection not initialized when receiving offer');
+      return;
+    }
+    try {
+      const offerDescription = new RTCSessionDescription(offer);
+      await peerConnectionRef.current.setRemoteDescription(offerDescription);
+
+      const answer = await peerConnectionRef.current.createAnswer();
+      await peerConnectionRef.current.setLocalDescription(answer);
+
+      // Add buffered ICE candidates
+      while (iceCandidatesBuffer.current.length > 0) {
+        const candidate = iceCandidatesBuffer.current.shift();
+        await peerConnectionRef.current.addIceCandidate(candidate);
+      }
+
+      socket.emit('answer', { answer: peerConnectionRef.current.localDescription, roomId });
+      console.log('Answer created and sent:', peerConnectionRef.current.localDescription);
+    } catch (error) {
+      console.error('Error handling offer:', error);
+    }
+  }, [roomId, socket]);
+
+  const handleAnswer = useCallback(async (answer) => {
+    console.log('Received answer:', answer);
+    if (!peerConnectionRef.current) {
+      console.error('PeerConnection not initialized when receiving answer');
+      return;
+    }
+    try {
+      const answerDescription = new RTCSessionDescription(answer);
+      await peerConnectionRef.current.setRemoteDescription(answerDescription);
+    } catch (error) {
+      console.error('Error setting remote description:', error);
+    }
   }, []);
 
+  const iceCandidatesBuffer = useRef([]);
+
+const handleIceCandidate = useCallback(async (candidate) => {
+  if (!peerConnectionRef.current) {
+    console.error('PeerConnection not initialized when receiving ICE candidate');
+    return;
+  }
+
+  if (!peerConnectionRef.current.remoteDescription || !peerConnectionRef.current.remoteDescription.type) {
+    iceCandidatesBuffer.current.push(candidate);
+    console.log('Buffering ICE candidate:', candidate);
+  } else {
+    try {
+      await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+      console.log('ICE candidate added:', candidate);
+    } catch (e) {
+      console.error('Error adding received ICE candidate', e);
+    }
+  }
+}, []);
+
   useEffect(() => {
-    if (!selectedDeviceId || !roomId) return;
+    if (!selectedDeviceId || !roomId || iceServers.length === 0) return;
 
     socket.emit('join-room', roomId);
     console.log(`Joined room: ${roomId}`);
 
     initializePeerConnection();
 
-    navigator.mediaDevices.getUserMedia({ video: { deviceId: selectedDeviceId }, audio: false })
+    navigator.mediaDevices.getUserMedia({ video: { deviceId: selectedDeviceId }, audio: true })
       .then((stream) => {
         localStreamRef.current.srcObject = stream;
 
@@ -113,61 +173,22 @@ const Streaming = ({ socket }) => {
         console.error('Error accessing media devices.', error);
       });
 
-      socket.on('offer', async (offer) => {
-        console.log('Received offer:', offer);
-        if (!peerConnectionRef.current) {
-          console.error('PeerConnection not initialized when receiving offer');
-          return;
-        }
-        try {
-          await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(offer));
-          const answer = await peerConnectionRef.current.createAnswer();
-          await peerConnectionRef.current.setLocalDescription(answer);
-          socket.emit('answer', { answer: peerConnectionRef.current.localDescription, roomId });
-          console.log('Answer created and sent:', peerConnectionRef.current.localDescription);
-        } catch (error) {
-          console.error('Error handling offer:', error);
-        }
-      });
-
-      socket.on('answer', async (answer) => {
-        console.log('Received answer:', answer);
-        if (!peerConnectionRef.current) {
-          console.error('PeerConnection not initialized when receiving answer');
-          return;
-        }
-        try {
-          await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
-        } catch (error) {
-          console.error('Error setting remote description:', error);
-        }
-      });
-
-    socket.on('ice-candidate', async (candidate) => {
-      try {
-        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-        console.log('ICE candidate added:', candidate);
-      } catch (e) {
-        console.error('Error adding received ICE candidate', e);
-      }
-    });
-
-    socket.on('create-offer', () => {
-      console.log('create-offer event received');
-      createOffer();
-    });
+    socket.on('offer', handleOffer);
+    socket.on('answer', handleAnswer);
+    socket.on('ice-candidate', handleIceCandidate);
+    socket.on('create-offer', createOffer);
 
     return () => {
-      socket.off('offer');
-      socket.off('answer');
-      socket.off('ice-candidate');
-      socket.off('create-offer');
+      socket.off('offer', handleOffer);
+      socket.off('answer', handleAnswer);
+      socket.off('ice-candidate', handleIceCandidate);
+      socket.off('create-offer', createOffer);
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
       }
     };
-  }, [selectedDeviceId, roomId, socket, createOffer, initializePeerConnection]);
+  }, [selectedDeviceId, roomId, socket, createOffer, initializePeerConnection, handleOffer, handleAnswer, handleIceCandidate, iceServers]);
 
   return (
     <div>
