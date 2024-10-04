@@ -37,6 +37,7 @@ const Streaming = ({ socket }) => {
         iceServers: iceServers,
         iceCandidatePoolSize: 10,
       };
+      console.log(configuration)
       peerConnectionRef.current = new RTCPeerConnection(configuration);
       console.log('PeerConnection created:', peerConnectionRef.current);
 
